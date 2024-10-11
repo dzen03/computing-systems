@@ -100,6 +100,7 @@ int main(void)
 	saved_state.state[i][0] = saved_state.state[i][1] = GPIO_PIN_RESET;
   }
   int state = 0;
+  GPIO_PinState prev_button = get_pin(GPIOC, GPIO_PIN_15);
 
   /* USER CODE END 2 */
 
@@ -107,12 +108,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    busywait_with_button(0, &state, &saved_state); // btn press check
+    busywait_with_button(0, &state, &saved_state, &prev_button); // btn press check
 	switch (state) {
-	  case_n(0, 0, 100, state, saved_state);
-	  case_n(1, 100, 100, state, saved_state);
-	  case_n(2, 500, 500, state, saved_state);
-	  case_n(3, 1000, 1000, state, saved_state);
+	  case_n(0, 0, 100, state, saved_state, prev_button);
+	  case_n(1, 100, 100, state, saved_state, prev_button);
+	  case_n(2, 500, 500, state, saved_state, prev_button);
+	  case_n(3, 1000, 1000, state, saved_state, prev_button);
 	}
     /* USER CODE END WHILE */
 
