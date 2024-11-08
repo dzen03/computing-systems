@@ -10,6 +10,20 @@ char RecieveChar(void) {
 	return UART_ReceiveChar();
 }
 
+uint8_t SendChar(char c) {
+	if (GetIRQ()) {
+		return UART_SendChar_IT(c);
+	}
+	return UART_SendChar(c);
+}
+
+uint8_t SendString(const char* c) {
+	if (GetIRQ()) {
+		return UART_SendString_IT(c);
+	}
+	return UART_SendString(c);
+}
+
 void RecieveString(char* out, uint8_t len, void (*exec_seq)(void)) {
 	uint8_t ind = 0;
 	while (1) {
@@ -18,10 +32,10 @@ void RecieveString(char* out, uint8_t len, void (*exec_seq)(void)) {
 	  if (c) {
 		  if (c == 127) { // backspace
 			  ind = ind - 1 >= 0 ? ind - 1: 0;
-			  UART_SendString("\b \b");
+			  SendString("\b \b");
 			  continue;
 		  }
-		  UART_SendChar(c);
+		  SendChar(c);
 
 		  if (c == '\n' || c == '\r') {
 			  out[ind] = '\0';

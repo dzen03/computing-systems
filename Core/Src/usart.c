@@ -1,11 +1,20 @@
 /* Includes ------------------------------------------------------------------*/
 #include "usart.h"
+#include <string.h>  // Не забудьте включить для использования strlen
 
 /* USER CODE BEGIN 0 */
 #define RX_BUFFER_SIZE 64
+#define TX_BUFFER_SIZE 64
+
 volatile uint8_t rxBuffer[RX_BUFFER_SIZE];
 volatile uint8_t rxHead = 0;
 volatile uint8_t rxTail = 0;
+
+volatile uint8_t txBuffer[TX_BUFFER_SIZE];
+volatile uint8_t txHead = 0;
+volatile uint8_t txTail = 0;
+
+volatile static uint8_t irq = 0;
 
 /* USER CODE END 0 */
 
@@ -27,7 +36,7 @@ void MX_USART6_UART_Init(void)
         Error_Handler();
     }
     // Start the interrupt-based reception
-//    HAL_UART_Receive_IT(&huart6, &rxBuffer[rxHead], 1);
+    HAL_UART_Receive_IT(&huart6, &rxBuffer[rxHead], 1);
 }
 
 void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
@@ -75,12 +84,47 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 }
 
 /* USER CODE BEGIN 1 */
-void UART_SendChar(char c) {
+uint8_t UART_SendChar(char c) {
+    return HAL_UART_Transmit(&huart6, (uint8_t *)&c, 1, HAL_MAX_DELAY);
+}
+
+uint8_t UART_SendString(const char* c) {
+    return HAL_UART_Transmit(&huart6, (uint8_t *)c, strlen(c), HAL_MAX_DELAY);
+}
+
+uint8_t UART_SendChar_IT(char c) {
+    uint8_t nextHead = (txHead + 1) % TX_BUFFER_SIZE;
+
+    if (nextHead == txTail) {
+        return 1;
+    }
+
+    txBuffer[txHead] = (uint8_t)c;
+    txHead = nextHead;
+    if (txHead == (txTail + 1) % TX_BUFFER_SIZE) {
+        if (HAL_UART_Transmit_IT(&huart6, &txBuffer[txTail], 1) != HAL_OK) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+uint8_t UART_SendString_IT(const char* str) {
+    while (*str) {
+        if (UART_SendChar_IT(*str++) != 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+void UART_SendChar_Blocking(char c) {
     HAL_UART_Transmit(&huart6, (uint8_t *)&c, 1, HAL_MAX_DELAY);
 }
 
-void UART_SendString(const char* c) {
-    HAL_UART_Transmit(&huart6, (uint8_t *)c, strlen(c), HAL_MAX_DELAY);
+void UART_SendString_Blocking(const char* str) {
+    HAL_UART_Transmit(&huart6, (uint8_t *)str, strlen(str), HAL_MAX_DELAY);
 }
 
 char UART_ReceiveChar(void) {
@@ -88,21 +132,28 @@ char UART_ReceiveChar(void) {
     if (HAL_UART_Receive(&huart6, &c, 1, 0) == HAL_OK) {
         return c;
     }
-    return 0;  // Return 0 if no data
+    return 0;
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     if (huart->Instance == USART6) {
         uint8_t nextHead = (rxHead + 1) % RX_BUFFER_SIZE;
-        if (nextHead != rxTail) {  // Check for buffer overflow
+        if (nextHead != rxTail) {
             rxHead = nextHead;
-        } else {
-            // Handle buffer overflow if necessary
         }
-        // Restart the interrupt to receive the next byte
         HAL_UART_Receive_IT(&huart6, &rxBuffer[rxHead], 1);
     }
 }
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+    if (huart->Instance == USART6) {
+        txTail = (txTail + 1) % TX_BUFFER_SIZE;
+        if (txTail != txHead) {
+            HAL_UART_Transmit_IT(&huart6, &txBuffer[txTail], 1);
+        }
+    }
+}
+
 
 char UART_ReceiveChar_IT(void) {
     if (rxHead != rxTail) {
@@ -110,7 +161,7 @@ char UART_ReceiveChar_IT(void) {
         rxTail = (rxTail + 1) % RX_BUFFER_SIZE;
         return c;
     }
-    return 0;  // Return 0 if no data
+    return 0;
 }
 
 void USART6_IRQHandler(void)
@@ -118,19 +169,23 @@ void USART6_IRQHandler(void)
     HAL_UART_IRQHandler(&huart6);
 }
 
+
 void DisableIRQ(void) {
-	HAL_UART_Abort(&huart6);
-	HAL_NVIC_DisableIRQ(USART6_IRQn);
-	irq = 0;
+    HAL_UART_Abort(&huart6);
+    HAL_NVIC_DisableIRQ(USART6_IRQn);
+    irq = 0;
 }
+
 void EnableIRQ(void) {
-	HAL_NVIC_EnableIRQ(USART6_IRQn);
-	rxHead = rxTail = 0;
-	HAL_UART_Receive_IT(&huart6, &rxBuffer[rxHead], 1);
-	irq = 1;
+    HAL_NVIC_EnableIRQ(USART6_IRQn);
+    rxHead = rxTail = 0;
+    txHead = txTail = 0;
+    HAL_UART_Receive_IT(&huart6, &rxBuffer[rxHead], 1);
+    irq = 1;
 }
 
 uint8_t GetIRQ(void) {
-	return irq;
+    return irq;
 }
-/* USER CODE END 1 */
+
+ /* USER CODE END 1 */

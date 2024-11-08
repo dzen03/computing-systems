@@ -58,15 +58,15 @@ void ProcessCommand(const char *command) {
 
             char buf[10];
 
-            UART_SendString("Enter delay (in ms): ");
+            SendString("Enter delay (in ms): ");
 
             RecieveString(buf, 10, &ExecuteSequence);
 
 
             seq->period = atoi(buf);
-            UART_SendString("\nOK ");
-            UART_SendChar('0' + newPush + 1);
-            UART_SendChar('\n');
+            SendString("\nOK ");
+            SendChar('0' + newPush + 1);
+            SendChar('\n');
 
             newPush = (newPush + 1) % MAX_STATES;
             newPush = (newPush >= 4 ? newPush : 4);
@@ -75,22 +75,22 @@ void ProcessCommand(const char *command) {
 
     } else if (strncmp(command, "set interrupts on", 17) == 0) {
     	EnableIRQ();
-        UART_SendString("\nOK\n");
+    	SendString("\nOK\n");
         return;
     } else if (strncmp(command, "set interrupts off", 18) == 0) {
     	DisableIRQ();
-        UART_SendString("\nOK\n");
+        SendString("\nOK\n");
         return;
     } else if (strncmp(command, "set ", 4) == 0) {
         uint8_t num = atoi(command + 4);
         if (num >= 1 && num <= MAX_SEQUENCES) {
             activeSequence = num - 1;
-            UART_SendString("\nOK\n");
+            SendString("\nOK\n");
             return;
         }
     }
 
-    UART_SendString("\nERR\n");
+    SendString("\nERR\n");
 }
 
 #endif /* INC_IMP_H_ */

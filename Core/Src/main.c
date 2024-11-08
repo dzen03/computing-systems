@@ -92,7 +92,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART6_UART_Init();
-  DisableIRQ();
+  EnableIRQ();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -108,10 +108,10 @@ int main(void)
 	  if (c) {
 		  if (c == 127) { // backspace
 			  commandIndex = commandIndex - 1 >= 0 ? commandIndex - 1 : 0;
-			  UART_SendString("\b \b");
+			  SendString("\b \b");
 			  continue;
 		  }
-		  UART_SendChar(c);
+		  SendChar(c);
 
 		  if (c == '\n' || c == '\r') {
 			  commandBuffer[commandIndex] = '\0';
