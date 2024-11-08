@@ -1,10 +1,3 @@
-/*
- * led.h
- *
- *  Created on: Oct 25, 2024
- *      Author: ilya
- */
-
 #ifndef INC_LED_H_
 #define INC_LED_H_
 

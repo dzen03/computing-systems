@@ -1,10 +1,3 @@
-/*
- * io.h
- *
- *  Created on: Nov 7, 2024
- *      Author: ilya
- */
-
 #ifndef INC_IO_H_
 #define INC_IO_H_
 
