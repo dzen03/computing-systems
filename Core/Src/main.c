@@ -17,17 +17,16 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-#include <led_strobe.h>
 #include "main.h"
 #include "gpio.h"
+//#define ENABLE_IT
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stdio.h"
-
-#include "led_strobe.h"
-#include "custom_gpio.h"
-#include "utills.h"
+#include "usart.h"
+#include "io.h"
+#include "led.h"
 
 /* USER CODE END Includes */
 
@@ -60,7 +59,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern void initialise_monitor_handles(void);
+//extern void initialise_monitor_handles(void);
 /* USER CODE END 0 */
 
 /**
@@ -71,7 +70,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	initialise_monitor_handles();
+//	initialise_monitor_handles();
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -92,33 +91,46 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_USART6_UART_Init();
+  EnableIRQ();
   /* USER CODE BEGIN 2 */
-
-  struct SavedState saved_state;
-
-  for (int i = 0; i < STATE_COUNT; ++i) {
-	saved_state.state[i][0] = saved_state.state[i][1] = GPIO_PIN_RESET;
-  }
-  int state = 0;
-  GPIO_PinState prev_button = get_pin(GPIOC, GPIO_PIN_15);
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    busywait_with_button(0, &state, &saved_state, &prev_button); // btn press check
-	switch (state) {
-	  case_n(0, 0, 100, state, saved_state, prev_button);
-	  case_n(1, 100, 100, state, saved_state, prev_button);
-	  case_n(2, 500, 500, state, saved_state, prev_button);
-	  case_n(3, 1000, 1000, state, saved_state, prev_button);
-	}
+  while (1) {
+	  char c = RecieveChar();
+
+	  static char commandBuffer[32];
+	  static uint8_t commandIndex = 0;
+
+	  if (c) {
+		  if (c == 127) { // backspace
+			  commandIndex = commandIndex - 1 >= 0 ? commandIndex - 1 : 0;
+			  UART_SendString("\b \b");
+			  continue;
+		  }
+		  UART_SendChar(c);
+
+		  if (c == '\n' || c == '\r') {
+			  commandBuffer[commandIndex] = '\0';
+			  ProcessCommand(commandBuffer);
+			  commandIndex = 0;
+		  } else {
+			  commandBuffer[commandIndex++] = c;
+			  if (commandIndex >= sizeof(commandBuffer) - 1) {
+				  commandIndex = 0;  // Сброс при переполнении
+			  }
+		  }
+	  }
+
+	  ExecuteSequence();
+
+      }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
   /* USER CODE END 3 */
 }
 
