@@ -83,7 +83,7 @@ void ExecuteSequence(void) {
 
 void ProcessCommand(const char *command) {
     if (strncmp(command, "new ", 4) == 0) {
-        uint8_t seqNum = activeSequence >= 5 ? activeSequence : 5 ;
+        uint8_t seqNum = activeSequence >= 4 ? activeSequence : 4 ;
         size_t len = strlen(command + 4);
         if (len >= 2 && len <= 8) {
             Sequence *seq = &sequences[seqNum];
@@ -106,22 +106,22 @@ void ProcessCommand(const char *command) {
 
     } else if (strncmp(command, "set interrupts on", 17) == 0) {
     	EnableIRQ();
-        UART_SendString("OK\n\n");
+        UART_SendString("\nOK\n");
         return;
-    } else if (strncmp(command, "set interrupts off", 17) == 0) {
+    } else if (strncmp(command, "set interrupts off", 18) == 0) {
     	DisableIRQ();
-        UART_SendString("OK\n\n");
+        UART_SendString("\nOK\n");
         return;
     } else if (strncmp(command, "set ", 4) == 0) {
         uint8_t num = atoi(command + 4);
         if (num >= 1 && num <= MAX_SEQUENCES) {
             activeSequence = num - 1;
-            UART_SendString("\nOK\n\n");
+            UART_SendString("\nOK\n");
             return;
         }
     }
 
-    UART_SendString("ERR\n");
+    UART_SendString("\nERR\n");
 }
 
 
