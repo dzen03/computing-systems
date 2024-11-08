@@ -35,7 +35,7 @@ extern "C" {
 extern UART_HandleTypeDef huart6;
 
 /* USER CODE BEGIN Private defines */
-
+volatile static uint8_t irq = 0;
 /* USER CODE END Private defines */
 
 void MX_USART6_UART_Init(void);
@@ -51,6 +51,11 @@ void UART_ReceiveString(char* out, uint8_t len);
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 char UART_ReceiveChar_IT(void);
 void UART_ReceiveString_IT(char* out, uint8_t len);
+
+void DisableIRQ(void);
+void EnableIRQ(void);
+
+uint8_t GetIRQ(void);
 
 /* USER CODE END Prototypes */
 

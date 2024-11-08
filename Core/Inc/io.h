@@ -3,20 +3,8 @@
 
 #include "usart.h"
 
-volatile static uint8_t irq = 0;
-
-void DisableIRQ(void) {
-	HAL_UART_Abort(&huart6);
-	HAL_NVIC_DisableIRQ(USART6_IRQn);
-	irq = 0;
-}
-void EnableIRQ(void) {
-	HAL_NVIC_EnableIRQ(USART6_IRQn);
-	irq = 1;
-}
-
 char RecieveChar(void) {
-	if (irq) {
+	if (GetIRQ()) {
 		return UART_ReceiveChar_IT();
 	}
 	return UART_ReceiveChar();

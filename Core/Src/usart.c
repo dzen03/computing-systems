@@ -27,7 +27,7 @@ void MX_USART6_UART_Init(void)
         Error_Handler();
     }
     // Start the interrupt-based reception
-    HAL_UART_Receive_IT(&huart6, &rxBuffer[rxHead], 1);
+//    HAL_UART_Receive_IT(&huart6, &rxBuffer[rxHead], 1);
 }
 
 void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
@@ -116,5 +116,21 @@ char UART_ReceiveChar_IT(void) {
 void USART6_IRQHandler(void)
 {
     HAL_UART_IRQHandler(&huart6);
+}
+
+void DisableIRQ(void) {
+	HAL_UART_Abort(&huart6);
+	HAL_NVIC_DisableIRQ(USART6_IRQn);
+	irq = 0;
+}
+void EnableIRQ(void) {
+	HAL_NVIC_EnableIRQ(USART6_IRQn);
+	rxHead = rxTail = 0;
+	HAL_UART_Receive_IT(&huart6, &rxBuffer[rxHead], 1);
+	irq = 1;
+}
+
+uint8_t GetIRQ(void) {
+	return irq;
 }
 /* USER CODE END 1 */

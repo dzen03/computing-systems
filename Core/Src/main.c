@@ -92,7 +92,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART6_UART_Init();
-  EnableIRQ();
+  DisableIRQ();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
