@@ -17,6 +17,7 @@ Sequence sequences[MAX_SEQUENCES] = {
 		{.states={'y', 'n'}, .stateCount=2, .period=500}};
 
 uint8_t activeSequence = 0;
+uint8_t newPush = 4;
 static uint32_t lastTick = 0;
 static uint32_t buttonStart = 0;
 
@@ -49,10 +50,9 @@ void ExecuteSequence(void) {
 
 void ProcessCommand(const char *command) {
     if (strncmp(command, "new ", 4) == 0) {
-        uint8_t seqNum = activeSequence >= 4 ? activeSequence : 4 ;
         size_t len = strlen(command + 4);
         if (len >= 2 && len <= 8) {
-            Sequence *seq = &sequences[seqNum];
+            Sequence *seq = &sequences[newPush];
             memcpy(seq->states, command + 4, len);
             seq->stateCount = len;
 
@@ -65,8 +65,11 @@ void ProcessCommand(const char *command) {
 
             seq->period = atoi(buf);
             UART_SendString("\nOK ");
-            UART_SendChar('0' + seqNum + 1);
+            UART_SendChar('0' + newPush + 1);
             UART_SendChar('\n');
+
+            newPush = (newPush + 1) % MAX_STATES;
+            newPush = (newPush >= 4 ? newPush : 4);
             return;
         }
 
