@@ -18,8 +18,9 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "tim.h"
+#include "usart.h"
 #include "gpio.h"
-//#define ENABLE_IT
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -92,40 +93,103 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART6_UART_Init();
-  EnableIRQ();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-
+  initialize_settings();
+  EnableIRQ();
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
+  SendString("\r\nСтарт.\r\n");
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  static char message[500] = {0};
   while (1) {
 	  char c = RecieveChar();
 
-	  static char commandBuffer[32];
-	  static uint8_t commandIndex = 0;
-
 	  if (c) {
-		  if (c == 127) { // backspace
-			  commandIndex = commandIndex - 1 >= 0 ? commandIndex - 1 : 0;
-			  SendString("\b \b");
-			  continue;
-		  }
-		  SendChar(c);
+		  if (c >= '1' && c <= '9') {
+			  uint8_t key = c - '1';
+			  current_config = settings[key];
+			  update_led(current_config);
+			  sprintf(message, "Включен светодиод '%c' с яркостью %d%%.\r\n", current_config.color, current_config.brightness);
+			  SendString(message);
+		  } else if (c == '0') {
+			  turn_off_leds();
+			  sprintf(message, "Выключены все светодиоды.\r\n");
+			  SendString(message);
+		  } else if (c == '\r') {
 
-		  if (c == '\n' || c == '\r') {
-			  commandBuffer[commandIndex] = '\0';
-			  ProcessCommand(commandBuffer);
-			  commandIndex = 0;
-		  } else {
-			  commandBuffer[commandIndex++] = c;
-			  if (commandIndex >= sizeof(commandBuffer) - 1) {
-				  commandIndex = 0;  // Сброс при переполнении
+			  READ_NUM:
+			  sprintf(message, "Режим настроек. Введите номер настройки для изменения [1 - 9]: ");
+			  SendString(message);
+
+
+			  for (c = RecieveChar(); c == 0; c = RecieveChar()) {}
+
+			  if (c < '1' || c > '9') {
+				  sprintf(message, "%c. Некорректный ввод.\r\n", c);
+				  SendString(message);
+				  goto READ_NUM;
 			  }
+
+			  const int settings_id = c - '1';
+
+			  READ_LED:
+			  sprintf(message, "%d.\r\nТеперь введите светодиод ('a'|'b'|'c'): ", settings_id + 1);
+			  SendString(message);
+
+			  for (c = RecieveChar(); c == 0; c = RecieveChar()) {}
+
+			  if (c != 'a' && c != 'b' && c != 'c') {
+				  sprintf(message, "%d. Некорректный ввод.\r\n", settings_id + 1);
+				  SendString(message);
+				  goto READ_LED;
+			  }
+
+			  const char led_id = c;
+			  sprintf(message, "%c.\r\nТеперь введите яркость ('+'|'-')\r\n", led_id);
+			  SendString(message);
+
+			  int pulse = 50;
+			  int br = 0;
+
+			  while(!br) {
+				  sprintf(message, "\tЯркость: %d%%\r\n", pulse);
+				  SendString(message);
+				  for (c = RecieveChar(); c == 0; c = RecieveChar()) {}
+
+
+
+				  switch (c){
+					  case '\r':
+						  br = 1;
+						  break;
+					  case '+':
+						  pulse += (pulse + 10 <= 100 ? 10 : 0);
+						  break;
+					  case '-':
+						  pulse -= (pulse - 10 >= 0 ? 10 : 0);
+						  break;
+					  default:
+						  sprintf(message, "\tНекорректный ввод: %c\r\n", c);
+						  SendString(message);
+				  }
+			  }
+
+			  settings[settings_id].color = led_id;
+			  settings[settings_id].brightness = pulse;
+
+			  sprintf(message, "Теперь пресет №%d: светодиод '%c' с яркостью %d%%.\r\n",
+					  settings_id + 1, settings[settings_id].color, settings[settings_id].brightness);
+			  SendString(message);
+		  } else {
+			  sprintf(message, "Некорректный ввод: '%c'.\r\n", c);
+			  SendString(message);
 		  }
 	  }
-
-	  ExecuteSequence();
 
       }
     /* USER CODE END WHILE */
@@ -151,11 +215,22 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = 15;
+  RCC_OscInitStruct.PLL.PLLN = 108;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = 4;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Activate the Over-Drive mode
+  */
+  if (HAL_PWREx_EnableOverDrive() != HAL_OK)
   {
     Error_Handler();
   }
@@ -164,12 +239,12 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV2;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
   {
     Error_Handler();
   }
