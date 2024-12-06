@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "i2c.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -94,104 +95,40 @@ int main(void)
   MX_GPIO_Init();
   MX_USART6_UART_Init();
   MX_TIM4_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
   initialize_settings();
-  EnableIRQ();
+  DisableIRQ();
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
+//  HAL_I2C_Init(&hi2c1); // Initialize I2C interface
   SendString("\r\nСтарт.\r\n");
+
+//  InitKeyboard();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  static char message[500] = {0};
   while (1) {
-	  char c = RecieveChar();
-
-	  if (c) {
-		  if (c >= '1' && c <= '9') {
-			  uint8_t key = c - '1';
-			  current_config = settings[key];
-			  update_led(current_config);
-			  sprintf(message, "Включен светодиод '%c' с яркостью %d%%.\r\n", current_config.color, current_config.brightness);
-			  SendString(message);
-		  } else if (c == '0') {
-			  turn_off_leds();
-			  sprintf(message, "Выключены все светодиоды.\r\n");
-			  SendString(message);
-		  } else if (c == '\r') {
-
-			  READ_NUM:
-			  sprintf(message, "Режим настроек. Введите номер настройки для изменения [1 - 9]: ");
-			  SendString(message);
-
-
-			  for (c = RecieveChar(); c == 0; c = RecieveChar()) {}
-
-			  if (c < '1' || c > '9') {
-				  sprintf(message, "%c. Некорректный ввод.\r\n", c);
-				  SendString(message);
-				  goto READ_NUM;
-			  }
-
-			  const int settings_id = c - '1';
-
-			  READ_LED:
-			  sprintf(message, "%d.\r\nТеперь введите светодиод ('a'|'b'|'c'): ", settings_id + 1);
-			  SendString(message);
-
-			  for (c = RecieveChar(); c == 0; c = RecieveChar()) {}
-
-			  if (c != 'a' && c != 'b' && c != 'c') {
-				  sprintf(message, "%d. Некорректный ввод.\r\n", settings_id + 1);
-				  SendString(message);
-				  goto READ_LED;
-			  }
-
-			  const char led_id = c;
-			  sprintf(message, "%c.\r\nТеперь введите яркость ('+'|'-')\r\n", led_id);
-			  SendString(message);
-
-			  int pulse = 50;
-			  int br = 0;
-
-			  while(!br) {
-				  sprintf(message, "\tЯркость: %d%%\r\n", pulse);
-				  SendString(message);
-				  for (c = RecieveChar(); c == 0; c = RecieveChar()) {}
-
-
-
-				  switch (c){
-					  case '\r':
-						  br = 1;
-						  break;
-					  case '+':
-						  pulse += (pulse + 10 <= 100 ? 10 : 0);
-						  break;
-					  case '-':
-						  pulse -= (pulse - 10 >= 0 ? 10 : 0);
-						  break;
-					  default:
-						  sprintf(message, "\tНекорректный ввод: %c\r\n", c);
-						  SendString(message);
-				  }
-			  }
-
-			  settings[settings_id].color = led_id;
-			  settings[settings_id].brightness = pulse;
-
-			  sprintf(message, "Теперь пресет №%d: светодиод '%c' с яркостью %d%%.\r\n",
-					  settings_id + 1, settings[settings_id].color, settings[settings_id].brightness);
-			  SendString(message);
-		  } else {
-			  sprintf(message, "Некорректный ввод: '%c'.\r\n", c);
-			  SendString(message);
-		  }
-	  }
-
+      // Check for mode switch button press
+      if (CheckModeSwitchButton()) {
+          ToggleMode();
       }
+
+      // Read buttons via I2C
+      uint8_t button_code = ReadButtons();
+
+      if (current_mode == TEST_MODE) {
+          if (button_code != 0) {
+              char message[50];
+              sprintf(message, "Нажата кнопка с кодом %d\r\n", button_code);
+              SendString(message);
+          }
+      } else if (current_mode == APPLICATION_MODE) {
+          ProcessButtonInput(button_code);
+      }
+  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

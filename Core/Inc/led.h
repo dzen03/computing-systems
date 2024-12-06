@@ -18,8 +18,8 @@ typedef struct {
 LED_Config settings[9];
 LED_Config current_config;
 
-enum Mode { WORKING_MODE, SETTING_MODE };
-enum Mode current_mode = WORKING_MODE;
+enum WorkingMode { WORKING_MODE, SETTING_MODE };
+enum WorkingMode current_working_mode = WORKING_MODE;
 
 uint8_t setting_stage = 0;
 uint8_t selected_key = 0;
