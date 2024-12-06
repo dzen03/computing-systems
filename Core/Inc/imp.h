@@ -43,13 +43,6 @@ static const uint8_t rows_map[4] = {
 	ROW4
 };
 
-// Button mapping matrix [row][col]
-static const uint8_t button_map[4][3] = {
-    {1,  2,  3},   // Row 0
-    {4,  5,  6},   // Row 1
-    {7,  8,  9},   // Row 2
-    {10, 11, 12}   // Row 3
-};
 
 static uint32_t last_mode_switch_time = 0;
 static uint8_t last_button_state = 0;
@@ -123,8 +116,9 @@ uint8_t Check_Row(uint8_t Nrow) {
             Nkey = (Nrow == ROW1) ? 3 : (Nrow == ROW2) ? 6 : (Nrow == ROW3) ? 9 : 12;
             cnt++;
         }
-    } else {
-        Nkey = 13;
+    }
+    else {
+    	Nkey = 0xFE;
     }
 
     if (cnt > 1) {
@@ -155,15 +149,9 @@ uint8_t CheckModeSwitchButton(void) {
 }
 
 uint8_t ReadButtons(void) {
-    uint8_t button_code = 0;
-    uint8_t config;
-    uint8_t output;
-    uint8_t input;
-
     for (uint8_t row = 0; row < 4; row++) {
         uint8_t res = Check_Row(rows_map[row]);
-        if (res != 0x0F && res != 0x0D) {
-//        	return res;
+        if (res != 0x0FF && res != 0xFE) {
             if (last_button_state != res || (HAL_GetTick() - last_button_time) > DEBOUNCE_DELAY) {
             	last_button_state = res;
             	last_button_time = HAL_GetTick();
@@ -195,9 +183,7 @@ void ProcessButtonInput(uint8_t button_code) {
 				SendString("Выключены все светодиоды.\r\n");
 			} else if (button_code == 11) {
 				current_working_mode = SETTING_MODE;
-				sprintf(message, "Режим настроек, введите номер настроек.\r\n",
-						current_config.color, current_config.brightness);
-				SendString(message);
+				SendString("Режим настроек, введите номер настроек.\r\n");
 			}
     	}
     	else {
@@ -228,7 +214,7 @@ void ProcessButtonInput(uint8_t button_code) {
     				sprintf(message, "Теперь пресет №%d: светодиод '%c' с яркостью %d%%.\r\n",
     						current_setting.num + 1, current_setting.conf.color, current_setting.conf.brightness);
 				    SendString(message);
-				    ss == SETTING;
+				    ss = SETTING;
 				    current_working_mode = WORKING_MODE;
     			}
     			char message[100];
