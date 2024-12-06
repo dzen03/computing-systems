@@ -64,9 +64,9 @@ void ProcessCommand(const char *command) {
 
 
             seq->period = atoi(buf);
-            SendString("\nOK ");
+            SendString("\r\nOK ");
             SendChar('0' + newPush + 1);
-            SendChar('\n');
+            SendString("\r\n");
 
             newPush = (newPush + 1) % MAX_STATES;
             newPush = (newPush >= 4 ? newPush : 4);
@@ -75,22 +75,22 @@ void ProcessCommand(const char *command) {
 
     } else if (strncmp(command, "set interrupts on", 17) == 0) {
     	EnableIRQ();
-    	SendString("\nOK\n");
+    	SendString("\r\nOK\r\n");
         return;
     } else if (strncmp(command, "set interrupts off", 18) == 0) {
     	DisableIRQ();
-        SendString("\nOK\n");
+        SendString("\r\nOK\r\n");
         return;
     } else if (strncmp(command, "set ", 4) == 0) {
         uint8_t num = atoi(command + 4);
         if (num >= 1 && num <= MAX_SEQUENCES) {
             activeSequence = num - 1;
-            SendString("\nOK\n");
+            SendString("\r\nOK\r\n");
             return;
         }
     }
 
-    SendString("\nERR\n");
+    SendString("\r\nERR\r\n");
 }
 
 #endif /* INC_IMP_H_ */
